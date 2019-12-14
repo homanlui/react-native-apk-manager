@@ -107,32 +107,22 @@ public class ApkManagerModule extends ReactContextBaseJavaModule implements Life
 
     @ReactMethod
     public void installApk(String filePath) {
-        apkFile = filePath;
-        File apkFile = new File(filePath);
-        Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            boolean b = getReactApplicationContext().getPackageManager().canRequestPackageInstalls();
+        try {
+            File file = new File(filePath);
+            String authority = this.getReactApplicationContext().getPackageName() + ".provider";
+            Uri fileUri = FileProvider.getUriForFile(this.getReactApplicationContext(), authority, file);
+            Intent intent = new Intent(Intent.ACTION_VIEW);
 
-            if (!b) {
-                //没有权限
-                startInstallPermissionSettingActivity();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                intent.setDataAndType(fileUri, "application/vnd.android.package-archive");
             } else {
-                intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                Uri contentUri = FileProvider.getUriForFile(
-                        getCurrentActivity()
-                        , this.getReactApplicationContext().getPackageName() + ".provider"
-                        , apkFile);
-                intent.setDataAndType(contentUri, "application/vnd.android.package-archive");
-                // Validate that the device can open the file
-                PackageManager pm = getCurrentActivity().getPackageManager();
-                if (intent.resolveActivity(pm) != null) {
-                    this.getReactApplicationContext().startActivity(intent);
-                }
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                intent.setDataAndType(Uri.fromFile(file), "application/vnd.android.package-archive");
             }
-        } else {
-            intent.setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive");
-            getReactApplicationContext().startActivity(intent);
+            this.getReactApplicationContext().startActivity(intent);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
